@@ -1,6 +1,11 @@
+
 const { v4: uuid } = require("uuid");
 const HttpError = require('./http-error');
- 
+
+const User = require('./user-model')
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
 const DUMMY_USERS = [
   {
     id: "p1",
@@ -76,13 +81,21 @@ const getUserById = (req, res, next) => {
 
 }
 
-const createClass = (req, res, next) => {
+const createClass = async(req, res, next) => {
   const userId = req.params.uid;
   const { title, students, styling, count} = req.body;
 
-  const user = DUMMY_USERS.find(u => {
-    return u.id === userId;
-  })
+  let user;
+  try{
+    user = await User.findById(userId);
+  } catch(err) {
+    const error = new HttpError('Could not find user',500)
+    return next(error)
+  }
+  
+
+
+
   if (!user){
     return next(new HttpError('Cannot add class to an unknown user.', 404))
 
@@ -93,61 +106,149 @@ const createClass = (req, res, next) => {
     styling,
     count,
     id: uuid(),
-
   };
+
   user.classList.push(createdClass)
+  try{
+    await user.save();
+  } catch (err) {
+    const error = new HttpError('Could not create class', 500);
+    return next(error);
+  }
   res.json({user});
 
 }
-const updateClass = (req, res, next) => {
+const updateClass = async(req, res, next) => {
   const userId = req.params.uid;
   const classId = req.params.cid;
   const { students, styling, count} = req.body;
 
-  const user = DUMMY_USERS.find(u => u.id === userId);
-  console.log(user.classList)
+  let user;
+  try{
+    user = await User.findById(userId);
+  } catch(err) {
+    const error = new HttpError('Could not find user',500)
+    return next(error)
+  }
+
+
   const updatedClass = user.classList.find(c => c.id === classId);
 
   updatedClass.students = students;
   updatedClass.styling = styling;
   updatedClass.count = count; 
-
+  try{
+    await user.save();
+  } catch (err) {
+    const error = new HttpError('Could not update class', 500);
+    return next(error);
+  }
   res.json({user});
 
 }
-const deleteClass = (req, res, next) => {
+const deleteClass = async(req, res, next) => {
   const userId = req.params.uid;
   const classId = req.params.cid;
-  const user = DUMMY_USERS.find(u => u.id === userId);
+  let user;
+
+  try{
+    user = await User.findById(userId);
+  } catch(err) {
+    const error = new HttpError('Could not find user',500)
+    return next(error)
+  }
+
   const newClassList = user.classList.filter(c => c.id !== classId);
 
   user.classList = newClassList;
+  try{
+    await user.save();
+  } catch (err) {
+    const error = new HttpError('Could not delete class', 500);
+    return next(error);
+  }
   res.json({user});
 
 }
-const signUp = (req, res, next) => {
+const signUp = async (req, res, next) => {
   const {email, password} = req.body;
-
-  const createdUser = {
+  let existingUser;
+  try{
+    existingUser = await User.findOne({email: email});
+    } catch (err) {
+      const error = new HttpError('Sign up failed, try again later', 500);
+      return next(error);
+    }
+  if (existingUser) {
+    const error = new HttpError('User already exists, please login instead', 422);
+    return next(error);
+  }
+  let hashedPassword;
+  try {
+    hashedPassword = await bcrypt.hash(password, 12);
+  } catch (err) {
+    const error = new HttpError('Could not create user, please try again', 500);
+    return next(error);
+  }
+  const createdUser = new User({
     id: uuid(),
     email,
-    password,
+    password: hashedPassword,
+    classList: []
+  })
+  try{
+    await createdUser.save();
 
+  } catch(err) {
+    const error = new HttpError('Could not sign up, please try again later', 500);
+    return next(error);
   }
-  DUMMY_USERS.push(createdUser);
-  console.log(DUMMY_USERS)
+  let token;
+  try{
+    token = jwt.sign(
+      { userId: createdUser.id, email: createdUser.email}, 'supersecrete_dont_share', {expiresIn:'2h'}
+    )
+  } catch(err) {
+    const error = new HttpError('Sign up failed, try again later', 500);
+    return next(error);
+  }
+
   res.status(201).json({user:createdUser})
   
 }
 
-const login = (req, res, next) => {
+const login = async(req, res, next) => {
   const {email, password} = req.body;
-
-  const identifiedUser = DUMMY_USERS.find(u => u.email === email);
-  if (!identifiedUser || identifiedUser.password !== password){
-    throw new HttpError('Could not identify user, credentials seem to be invalid');
+  let existingUser;
+  try{
+    existingUser = await User.findOne({ email:email});
+  } catch(err) {
+    const error = new HttpError('Login failed',500)
+    return next(error)
   }
-  res.json({message:'Logged in!'});
+
+  let isValidPassword = false;
+  try{
+    isValidPassword = await bcrypt.compare(password, existingUser.password);
+  } catch (err) {
+    const error = new HttpError('Could not log you in, please check your credentials', 500);
+    return next(error)
+  }
+  let token;
+  try{
+    token = jwt.sign(
+      { userId: existingUser.id, email:existingUser.email},'supersecrete_dont_share', {expireIn: '2h'}
+    )
+  } catch (err) {
+    const error = new HttpError('Login failed, please try again later', 500);
+    return next(error)
+  }
+  res.json({
+    userId: existingUser.id,
+    email: existingUser.email,
+    token: token
+  })
+
 }
 
 exports.getUserById = getUserById;

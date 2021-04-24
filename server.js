@@ -1,9 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-
+const mongoose = require('mongoose');
 const usersRoutes = require('./users-routes');
 const HttpError = require('./http-error');
+
+
 const app = express();
+
 
 app.use(bodyParser.json());
 
@@ -22,4 +25,11 @@ app.use((error, req, res, next) => {
   res.json({message: error.message || 'An unknown error occurred'});
 });
 
-app.listen(5000);
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://clovy:clovypwd@cluster0.cbxzf.mongodb.net/classmanager?retryWrites=true&w=majority')
+.then(()=>{
+  app.listen(process.env.PORT || 5000);
+
+})
+.catch(err => {
+  console.log(err);
+})
