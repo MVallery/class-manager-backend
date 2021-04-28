@@ -4,9 +4,10 @@ const usersControllers = require('./users-controllers')
 const HttpError = require('./http-error');
 const router = express.Router();
 
+router.post('/:uid/create-class', usersControllers.createClass)
+
 router.get('/:uid', usersControllers.getUserById)
 
-router.post('/:uid/create-class', usersControllers.createClass)
 
 router.patch('/:uid/:cid', usersControllers.updateClass)
 router.delete('/:uid/:cid', usersControllers.deleteClass)

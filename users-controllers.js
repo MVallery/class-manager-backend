@@ -83,8 +83,7 @@ const getUserById = (req, res, next) => {
 
 const createClass = async(req, res, next) => {
   const userId = req.params.uid;
-  const { title, students, styling, count} = req.body;
-
+  const { title, students, styling, count, id} = req.body;
   let user;
   try{
     user = await User.findById(userId);
@@ -93,9 +92,6 @@ const createClass = async(req, res, next) => {
     return next(error)
   }
   
-
-
-
   if (!user){
     return next(new HttpError('Cannot add class to an unknown user.', 404))
 
@@ -105,7 +101,7 @@ const createClass = async(req, res, next) => {
     students,
     styling,
     count,
-    id: uuid(),
+    id
   };
 
   user.classList.push(createdClass)
@@ -121,8 +117,9 @@ const createClass = async(req, res, next) => {
 const updateClass = async(req, res, next) => {
   const userId = req.params.uid;
   const classId = req.params.cid;
+  
   const { students, styling, count} = req.body;
-
+  console.log(req.body)
   let user;
   try{
     user = await User.findById(userId);
@@ -131,18 +128,22 @@ const updateClass = async(req, res, next) => {
     return next(error)
   }
 
-
+  console.log('user',user)
   const updatedClass = user.classList.find(c => c.id === classId);
-
+  console.log(updatedClass)
   updatedClass.students = students;
   updatedClass.styling = styling;
   updatedClass.count = count; 
+  console.log(updatedClass)
+
   try{
+    user.markModified('classList') //ensures that database knows that classList has changed and needs to be saved
     await user.save();
   } catch (err) {
     const error = new HttpError('Could not update class', 500);
     return next(error);
   }
+  console.log(user.classList)
   res.json({user});
 
 }
@@ -191,7 +192,7 @@ const signUp = async (req, res, next) => {
     return next(error);
   }
   const createdUser = new User({
-    id: uuid(),
+    // id: uuid(),
     email,
     password: hashedPassword,
     classList: []
@@ -206,14 +207,14 @@ const signUp = async (req, res, next) => {
   let token;
   try{
     token = jwt.sign(
-      { userId: createdUser.id, email: createdUser.email}, 'supersecrete_dont_share', {expiresIn:'2h'}
+      { userId: createdUser.id, email: createdUser.email}, 'supersecret_dont_share', {expiresIn:'1h'}
     )
   } catch(err) {
     const error = new HttpError('Sign up failed, try again later', 500);
     return next(error);
   }
 
-  res.status(201).json({user:createdUser})
+  res.status(201).json({userId: createdUser.id, email:createdUser.email, token:tokenr})
   
 }
 
@@ -237,7 +238,7 @@ const login = async(req, res, next) => {
   let token;
   try{
     token = jwt.sign(
-      { userId: existingUser.id, email:existingUser.email},'supersecrete_dont_share', {expireIn: '2h'}
+      { userId: existingUser.id, email:existingUser.email},'supersecret_dont_share', {expiresIn: '1h'}
     )
   } catch (err) {
     const error = new HttpError('Login failed, please try again later', 500);
@@ -246,7 +247,8 @@ const login = async(req, res, next) => {
   res.json({
     userId: existingUser.id,
     email: existingUser.email,
-    token: token
+    token: token,
+    classList:existingUser.classList
   })
 
 }
