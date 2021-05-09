@@ -214,7 +214,7 @@ const signUp = async (req, res, next) => {
     return next(error);
   }
 
-  res.status(201).json({userId: createdUser.id, email:createdUser.email, token:tokenr})
+  res.status(201).json({userId: createdUser.id, email:createdUser.email, token:token})
   
 }
 
