@@ -119,7 +119,6 @@ const updateClass = async(req, res, next) => {
   const classId = req.params.cid;
   
   const { students, styling, count} = req.body;
-  console.log(req.body)
   let user;
   try{
     user = await User.findById(userId);
@@ -128,13 +127,10 @@ const updateClass = async(req, res, next) => {
     return next(error)
   }
 
-  console.log('user',user)
   const updatedClass = user.classList.find(c => c.id === classId);
-  console.log(updatedClass)
   updatedClass.students = students;
   updatedClass.styling = styling;
   updatedClass.count = count; 
-  console.log(updatedClass)
 
   try{
     user.markModified('classList') //ensures that database knows that classList has changed and needs to be saved
@@ -143,7 +139,6 @@ const updateClass = async(req, res, next) => {
     const error = new HttpError('Could not update class', 500);
     return next(error);
   }
-  console.log(user.classList)
   res.json({user});
 
 }
