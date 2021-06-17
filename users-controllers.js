@@ -217,6 +217,7 @@ const login = async(req, res, next) => {
   const {email, password} = req.body;
   let existingUser;
   try{
+    id ? existingUser = await User.findOne({id:id}):
     existingUser = await User.findOne({ email:email});
   } catch(err) {
     const error = new HttpError('Login failed',500)
@@ -247,10 +248,65 @@ const login = async(req, res, next) => {
   })
 
 }
+const googleLogin = async(req, res, next) => {
+  const { id, email, token } = req.body;
+  console.log('googlelogin', token)
+  let existingUser;
+  try{
+    existingUser = await User.findOne({email:email});
+    console.log('existinguser', existingUser)
+
+  } catch(err) {
+    const error = new HttpError('Login failed',500);
+    return next(error)
+  }
+  if (existingUser){
+    res.json({
+      userId: existingUser.id,
+      email: existingUser.email,
+      token: token,
+      classList: existingUser.classList
+    })
+    console.log('if existing user',existingUser)
+  } else {
+    console.log('no existing user')
+    const createdUser = new User({
+      id,
+      email,
+      password: 'google',
+      classList: []
+    })
+    try{
+      await createdUser.save();
+      console.log('createdusersaved??')
+  
+    } catch(err) {
+      const error = new HttpError('Could not sign up, please try again later', 500);
+      return next(error);
+    }
+    let token;
+    try{
+      token = jwt.sign(
+        { userId: createdUser.id, email: createdUser.email}, 'supersecret_dont_share', {expiresIn:'1h'}
+      )
+    } catch(err) {
+      const error = new HttpError('Sign up failed, try again later', 500);
+      return next(error);
+    }
+  
+    res.status(201).json({userId: createdUser.id, email:createdUser.email, token:token, classList:createdUser.classList})
+    
+
+  }
+
+
+
+}
 
 exports.getUserById = getUserById;
 exports.signUp = signUp;
 exports.login = login;
+exports.googleLogin = googleLogin;
 exports.createClass = createClass;
 exports.updateClass = updateClass;
 exports.deleteClass = deleteClass;
