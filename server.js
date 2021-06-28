@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const usersRoutes = require('./users-routes');
 const HttpError = require('./http-error');
+require('dotenv').config();
 
 
 const app = express();
@@ -27,9 +28,9 @@ app.use((error, req, res, next) => {
   res.json({message: error.message || 'An unknown error occurred'});
 });
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://clovy:clovypwd@cluster0.cbxzf.mongodb.net/classmanager?retryWrites=true&w=majority')
+mongoose.connect(process.env.REACT_APP_MONGODB_URI)
 .then(()=>{
-  app.listen(process.env.PORT || 5000);
+  app.listen(process.env.REACT_APP_PORT || 5000);
 
 })
 .catch(err => {

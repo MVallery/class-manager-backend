@@ -250,11 +250,9 @@ const login = async(req, res, next) => {
 }
 const googleLogin = async(req, res, next) => {
   const { id, email, token } = req.body;
-  console.log('googlelogin', token)
   let existingUser;
   try{
     existingUser = await User.findOne({email:email});
-    console.log('existinguser', existingUser)
 
   } catch(err) {
     const error = new HttpError('Login failed',500);
@@ -267,9 +265,7 @@ const googleLogin = async(req, res, next) => {
       token: token,
       classList: existingUser.classList
     })
-    console.log('if existing user',existingUser)
   } else {
-    console.log('no existing user')
     const createdUser = new User({
       id,
       email,
@@ -278,7 +274,6 @@ const googleLogin = async(req, res, next) => {
     })
     try{
       await createdUser.save();
-      console.log('createdusersaved??')
   
     } catch(err) {
       const error = new HttpError('Could not sign up, please try again later', 500);
